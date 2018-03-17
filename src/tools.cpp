@@ -1,6 +1,9 @@
 #include <iostream>
 #include "tools.h"
 
+#define EPS 0.0001
+#define EPS2 0.0000001
+
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::vector;
@@ -62,21 +65,22 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
 	float vx = x_state(2);
 	float vy = x_state(3);
 	
+	//pre-compute a set of terms to avoid repeated calculation
+	float c1 = px*px+py*py;
+	float c2 = sqrt(c1);
+	float c3 = (c1*c2);
+
 	//check division by zero
-	if((px+py)==0){
-	    cout << "Error";
+	if(fabs(c1) < EPS){
+		c1 = EPS;
+		cout << "CalculateJacobian () - Error - Division by Zero" << endl;
+		//return Hj;
 	}
-	else{
-	    float pxpy = px*px+py*py;
-	    Hj(0,0) = px/sqrt(pxpy);
-	    Hj(1,0) = -py/pxpy;
-	    Hj(0,1) = py/sqrt(pxpy);
-	    Hj(1,1) = px/pxpy;
-	    Hj(2,0) = py*(vx*py-vy*px)/sqrt(pxpy*pxpy*pxpy);
-	    Hj(2,1) = px*(vx*py-vy*px)/sqrt(pxpy*pxpy*pxpy);
-	    Hj(2,2) = px/sqrt(pxpy);
-	    Hj(2,3) = py/sqrt(pxpy);
-	}
+
+	//compute the Jacobian matrix
+	Hj << (px/c2), (py/c2), 0, 0,
+		  -(py/c1), (px/c1), 0, 0,
+		  py*(vx*py - vy*px)/c3, px*(px*vy - py*vx)/c3, px/c2, py/c2;
 	//compute the Jacobian matrix
 
 	return Hj;

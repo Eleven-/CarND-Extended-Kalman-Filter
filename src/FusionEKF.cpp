@@ -3,6 +3,8 @@
 #include "Eigen/Dense"
 #include <iostream>
 
+#define EPS 0.0001 // A very small number
+
 using namespace std;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -70,7 +72,7 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       */
       // Polar Coordinates
       float rho = measurement_pack.raw_measurements_[0];  // range
-      float rho = measurement_pack.raw_measurements_[1];  // bearing
+      float phi = measurement_pack.raw_measurements_[1];  // bearing
       float rho_dot = measurement_pack.raw_measurements_[2];  // velocity of rho
       
       // Cartesian Coordinates
@@ -94,6 +96,27 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       ekf_.x_ << x, y, 0, 0;
     }
 
+	/*
+	// initialization case
+    if (fabs(ekf_.x_(0)) < EPS and fabs(ekf_.x_(1)) < EPS){
+		ekf_.x_(0) = EPS;
+		ekf_.x_(1) = EPS;
+	}
+	*/
+	
+	// Initial covariance matrix
+    ekf_.P_ = MatrixXd(4, 4);
+    ekf_.P_ << 1, 0, 0, 0,
+			   0, 1, 0, 0,
+			   0, 0, 1000, 0,
+			   0, 0, 0, 1000;
+			   
+    // Print the initialization results
+    cout << "EKF init: " << ekf_.x_ << endl;
+    // Save the initiall timestamp for dt calculation
+    previous_timestamp_ = measurement_pack.timestamp_;
+    // Done initializing, no need to predict or update
+	
     // done initializing, no need to predict or update
     is_initialized_ = true;
     return;
@@ -122,8 +145,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
              0, 0, 0, 1;
   
   // Noise covariance matrix Update
-  noise_ax = 9;
-  noise_ay = 9;
+  float noise_ax = 9;
+  float noise_ay = 9;
   
   float dt_two = dt*dt;
   float dt_three = (dt*dt_two)/2;
